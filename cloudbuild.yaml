@@ -28,7 +28,7 @@ steps:
             --platform managed \
             --allow-unauthenticated \
             --service-account cloud-run-gcp-mon@gcp-mon.iam.gserviceaccount.com \
-            --set-env-vars=LOC=${LOC}
+            --set-env-vars=REGION=$LOC
 
           URL=$(gcloud run services describe $SERVICE_NAME \
             --platform managed \
@@ -37,7 +37,7 @@ steps:
 
           gcloud run services update $SERVICE_NAME \
             --region $LOC \
-            --update-env-vars=K_SERVICE_URL=${URL},LOC=${LOC}
+            --update-env-vars=K_SERVICE_URL=$URL,REGION=$LOC
         done
 
   # Build collector image
