@@ -17,6 +17,7 @@ steps:
       - -c
       - |
         for _LOC in ${_AGENT_LOCS}; do
+          echo "printtest -- loc : $_LOC"
           _SERVICE_NAME=gcp-mon-agent-${_LOC}
           _IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/gcp-mon-backend/agent:latest
 
