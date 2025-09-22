@@ -30,14 +30,14 @@ steps:
             --service-account cloud-run-gcp-mon@gcp-mon.iam.gserviceaccount.com \
             --set-env-vars=REGION=$_LOC
 
-          URL=$(gcloud run services describe $_SERVICE_NAME \
+          _URL=$(gcloud run services describe $_SERVICE_NAME \
             --platform managed \
             --region $_LOC \
             --format 'value(status.url)')
 
           gcloud run services update $_SERVICE_NAME \
             --region $_LOC \
-            --update-env-vars=K_SERVICE_URL=$URL,REGION=$_LOC
+            --update-env-vars=K_SERVICE_URL=$_URL,REGION=$_LOC
         done
 
   # Build collector image
