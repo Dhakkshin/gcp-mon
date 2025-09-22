@@ -16,6 +16,7 @@ steps:
     args:
       - -c
       - |
+        set -euo pipefail
         for _LOC in ${_AGENT_LOCS}; do
           echo "printtest -- loc : $_LOC"
           _SERVICE_NAME=gcp-mon-agent-${_LOC}
