@@ -17,25 +17,25 @@ steps:
       - -c
       - |
         for _LOC in ${_AGENT_LOCS}; do
-          SERVICE_NAME=latency-agent-${_LOC}
-          IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/latency/agent:latest
+          _SERVICE_NAME=latency-agent-${_LOC}
+          _IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/latency/agent:latest
 
-          echo "🚀 Deploying $SERVICE_NAME to $_LOC"
+          echo "🚀 Deploying $_SERVICE_NAME to $_LOC"
 
-          gcloud run deploy $SERVICE_NAME \
-            --image $IMAGE \
+          gcloud run deploy $_SERVICE_NAME \
+            --image $_IMAGE \
             --region $_LOC \
             --platform managed \
             --allow-unauthenticated \
             --service-account cloud-run-gcp-mon@gcp-mon.iam.gserviceaccount.com \
             --set-env-vars=REGION=$_LOC
 
-          URL=$(gcloud run services describe $SERVICE_NAME \
+          URL=$(gcloud run services describe $_SERVICE_NAME \
             --platform managed \
             --region $_LOC \
             --format 'value(status.url)')
 
-          gcloud run services update $SERVICE_NAME \
+          gcloud run services update $_SERVICE_NAME \
             --region $_LOC \
             --update-env-vars=K_SERVICE_URL=$URL,REGION=$_LOC
         done
@@ -55,13 +55,13 @@ steps:
       - -c
       - |
         _LOC=asia-south1
-        SERVICE_NAME=latency-collector
-        IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/latency/collector:latest
+        _SERVICE_NAME=latency-collector
+        _IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/latency/collector:latest
 
-        echo "🚀 Deploying $SERVICE_NAME to $_LOC"
+        echo "🚀 Deploying $_SERVICE_NAME to $_LOC"
 
-        gcloud run deploy $SERVICE_NAME \
-          --image $IMAGE \
+        gcloud run deploy $_SERVICE_NAME \
+          --image $_IMAGE \
           --region $_LOC \
           --platform managed \
           --allow-unauthenticated \
