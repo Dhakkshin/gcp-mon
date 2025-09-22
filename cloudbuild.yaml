@@ -1,5 +1,5 @@
 substitutions:
-  _AGENT_REGIONS: "us-central1 europe-west3 asia-northeast1 asia-southeast1 asia-south1"
+  _AGENT_LOCS: "us-central1 europe-west3 asia-northeast1 asia-southeast1 asia-south1"
 
 steps:
   # Build agent image
@@ -10,35 +10,34 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'asia-south1-docker.pkg.dev/$PROJECT_ID/latency/agent:latest']
 
-  # Deploy agents to multiple regions
+  # Deploy agents to multiple locations
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
       - |
-        for REGION in ${_AGENT_REGIONS}; do
-          SERVICE_NAME=latency-agent-${REGION}
+        for LOC in ${_AGENT_LOCS}; do
+          SERVICE_NAME=latency-agent-${LOC}
           IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/latency/agent:latest
 
-          echo "🚀 Deploying $SERVICE_NAME to $REGION"
+          echo "🚀 Deploying $SERVICE_NAME to $LOC"
 
           gcloud run deploy $SERVICE_NAME \
             --image $IMAGE \
-            --region $REGION \
+            --region $LOC \
             --platform managed \
             --allow-unauthenticated \
             --service-account cloud-run-gcp-mon@gcp-mon.iam.gserviceaccount.com \
-            --set-env-vars=REGION=$${REGION}
+            --set-env-vars=LOC=${LOC}
 
           URL=$(gcloud run services describe $SERVICE_NAME \
             --platform managed \
-            --region $REGION \
+            --region $LOC \
             --format 'value(status.url)')
 
           gcloud run services update $SERVICE_NAME \
-            --region $REGION \
-            --update-env-vars=K_SERVICE_URL=$${URL},REGION=$${REGION}
-
+            --region $LOC \
+            --update-env-vars=K_SERVICE_URL=${URL},LOC=${LOC}
         done
 
   # Build collector image
@@ -55,15 +54,15 @@ steps:
     args:
       - -c
       - |
-        REGION=asia-south1
+        LOC=asia-south1
         SERVICE_NAME=latency-collector
         IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/latency/collector:latest
 
-        echo "🚀 Deploying $SERVICE_NAME to $REGION"
+        echo "🚀 Deploying $SERVICE_NAME to $LOC"
 
         gcloud run deploy $SERVICE_NAME \
           --image $IMAGE \
-          --region $REGION \
+          --region $LOC \
           --platform managed \
           --allow-unauthenticated \
           --service-account cloud-run-gcp-mon@gcp-mon.iam.gserviceaccount.com
