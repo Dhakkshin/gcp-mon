@@ -1,5 +1,16 @@
 FROM python:3.11-slim
+
 WORKDIR /app
-COPY collector.py requirements.txt .
-RUN pip install -r requirements.txt
-CMD ["python", "collector.py"]
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install gunicorn for serving Flask in production
+RUN pip install --no-cache-dir gunicorn
+
+# Copy source code
+COPY . .
+
+# Start Flask app with gunicorn
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "collector:app"]

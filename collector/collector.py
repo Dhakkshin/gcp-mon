@@ -1,49 +1,53 @@
-import os, time, requests, logging
 from flask import Flask, jsonify
-from google.cloud import bigquery
-from datetime import datetime
+import requests
+import time
+from google.cloud import firestore
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 app = Flask(__name__)
+db = firestore.Client()
 
-# AGENTS env format: "region1=https://url1,region2=https://url2"
-AGENTS_RAW = os.environ.get("AGENTS", "")
-AGENTS = {}
-if AGENTS_RAW:
-    for pair in AGENTS_RAW.split(","):
-        if not pair.strip(): continue
+def get_agent_urls():
+    docs = db.collection("agents").stream()
+    return [(doc.id, doc.to_dict()["url"]) for doc in docs]
+
+def collect():
+    urls = get_agent_urls()
+    results = []
+
+    for region, url in urls:
         try:
-            region, url = pair.split("=", 1)
-            AGENTS[region.strip()] = url.strip().rstrip("/") + "/ping"
-        except Exception as e:
-            logging.warning("Bad AGENTS entry: %s -> %s", pair, e)
+            start = time.time()
+            resp = requests.get(f"{url}/ping", timeout=5)
+            latency = round((time.time() - start) * 1000, 2)
 
-BQ_TABLE = os.environ.get("BQ_TABLE", "photogrammetry-pipeline.latency.latencies")
-bq = bigquery.Client()
+            result = {
+                "timestamp": firestore.SERVER_TIMESTAMP,
+                "region": region,
+                "url": url,
+                "status": "success",
+                "response": resp.json(),
+                "latency_ms": latency,
+            }
 
-@app.route("/run")
-def run_test():
-    logging.info("Starting ping round to %d targets", len(AGENTS))
-    rows = []
-    for region, url in AGENTS.items():
-        start = time.time()
-        latency = None
-        try:
-            r = requests.get(url, timeout=5)
-            if r.status_code == 200:
-                latency = (time.time() - start) * 1000.0
-            else:
-                logging.warning("Non-200 from %s: %s", region, r.status_code)
+            db.collection("results").add(result)
+            results.append(result)
         except Exception as e:
-            logging.warning("Ping to %s failed: %s", region, e)
-        rows.append({
-            "timestamp": datetime.utcnow().isoformat(),
-            "source_region": "asia-south1",
-            "target_region": region,
-            "latency_ms": latency
-        })
-    logging.info("Inserting %d rows into BigQuery %s", len(rows), BQ_TABLE)
-    errors = bq.insert_rows_json(BQ_TABLE, rows)
-    if errors:
-        logging.error("BigQuery insert errors: %s", errors)
-    return jsonify({"insert_errors": errors, "results": rows})
+            result = {
+                "timestamp": firestore.SERVER_TIMESTAMP,
+                "region": region,
+                "url": url,
+                "status": "error",
+                "error": str(e),
+            }
+            db.collection("results").add(result)
+            results.append(result)
+
+    return results
+
+@app.route("/run", methods=["GET"])
+def run_collection():
+    results = collect()
+    return jsonify({"status": "done", "results": results})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
