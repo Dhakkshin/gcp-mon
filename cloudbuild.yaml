@@ -73,4 +73,5 @@ steps:
 
 options:
   logging: CLOUD_LOGGING_ONLY
-  service_account: cloud-build-gcp-mon@gcp-mon-472905.iam.gserviceaccount.com
+
+serviceAccount: cloud-build-gcp-mon@gcp-mon-472905.iam.gserviceaccount.com
