@@ -1,5 +1,6 @@
 substitutions:
-  _AGENT_LOCS: "us-central1 europe-west3 asia-northeast1 asia-southeast1 asia-south1"
+  substitutions:
+  _AGENT_LOCS: "asia-south1 us-central1 us-east1 us-east4 us-east5 us-west1 us-west2 us-west3 us-west4 northamerica-northeast1 northamerica-northeast2 southamerica-east1 southamerica-west1 europe-central2 europe-north1 europe-southwest1 europe-west1 europe-west2 europe-west3 europe-west4 europe-west6 europe-west8 europe-west9 asia-east1 asia-east2 asia-northeast1 asia-northeast2 asia-northeast3 asia-south2 asia-southeast1 asia-southeast2 australia-southeast1 australia-southeast2 me-central1 me-west1 africa-south1"
 
 steps:
   # Build agent image
@@ -41,7 +42,8 @@ steps:
             --platform managed \
             --allow-unauthenticated \
             --service-account cloud-run-gcp-mon@gcp-mon-472905.iam.gserviceaccount.com \
-            --set-env-vars=REGION=$$LOC; then
+            --set-env-vars=REGION=$$LOC \
+            --verbosity=debug; then
 
             URL=$(gcloud run services describe $$SERVICE_NAME \
               --platform managed \
@@ -76,7 +78,7 @@ steps:
     args:
       - -c
       - |
-        LOC=asia-south1
+        LOC=southamerica-east1
         SERVICE_NAME=gcp-mon-collector
         IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/gcp-mon-backend/collector:latest
 
@@ -87,7 +89,8 @@ steps:
           --region $$LOC \
           --platform managed \
           --allow-unauthenticated \
-          --service-account cloud-run-gcp-mon@gcp-mon-472905.iam.gserviceaccount.com
+          --service-account cloud-run-gcp-mon@gcp-mon-472905.iam.gserviceaccount.com \
+          --verbosity=debug
 
 options:
   logging: CLOUD_LOGGING_ONLY
