@@ -1,5 +1,5 @@
 substitutions:
-  _AGENT_LOCS: "us-central1 europe-west3 asia-northeast1 asia-southeast1 asia-south1"
+  _AGENT_LOCS: "us-central1 europe-west3 asia-northeast1 asia-southeast1 us-east1 us-west1 australia-southeast1 southamerica-east1"
 
 steps:
   # Build agent image
@@ -10,7 +10,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'asia-south1-docker.pkg.dev/$PROJECT_ID/gcp-mon-backend/agent:latest']
 
-  # Deploy agents to multiple locations
+  # Deploy agents to multiple locations (up to 5 successful regions)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -18,30 +18,43 @@ steps:
       - |
         set -euo pipefail
         echo "Agent locations: $_AGENT_LOCS"
+        SUCCESS=0
+        MAX=5
+
         for LOC in ${_AGENT_LOCS}; do
-          declare -p LOC
-          echo "printtest -- loc : $$LOC"
-          SERVICE_NAME=gcp-mon-agent-$$LOC
-          IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/gcp-mon-backend/agent:latest
+          if [ "$SUCCESS" -ge "$MAX" ]; then
+            echo "✅ Reached $MAX successful deployments. Stopping."
+            break
+          fi
 
-          echo "🚀 Deploying $$SERVICE_NAME to $$LOC"
+          SERVICE_NAME="gcp-mon-agent-${LOC}"
+          IMAGE="asia-south1-docker.pkg.dev/$PROJECT_ID/gcp-mon-backend/agent:latest"
 
-          gcloud run deploy $$SERVICE_NAME \
-            --image $$IMAGE \
-            --region $$LOC \
-            --platform managed \
-            --allow-unauthenticated \
-            --service-account cloud-run-gcp-mon@gcp-mon-472905.iam.gserviceaccount.com \
-            --set-env-vars=REGION=$$LOC
+          echo "🚀 Deploying $SERVICE_NAME to $LOC"
 
-          URL=$(gcloud run services describe $$SERVICE_NAME \
-            --platform managed \
-            --region $$LOC \
-            --format 'value(status.url)')
+          if gcloud run deploy "$SERVICE_NAME" \
+              --image "$IMAGE" \
+              --region "$LOC" \
+              --platform managed \
+              --allow-unauthenticated \
+              --service-account cloud-run-gcp-mon@gcp-mon-472905.iam.gserviceaccount.com \
+              --set-env-vars=REGION="$LOC"; then
 
-          gcloud run services update $$SERVICE_NAME \
-            --region $$LOC \
-            --update-env-vars=K_SERVICE_URL=$$URL,REGION=$$LOC
+            URL=$(gcloud run services describe "$SERVICE_NAME" \
+              --platform managed \
+              --region "$LOC" \
+              --format 'value(status.url)')
+
+            gcloud run services update "$SERVICE_NAME" \
+              --region "$LOC" \
+              --update-env-vars=K_SERVICE_URL="$URL",REGION="$LOC"
+
+            SUCCESS=$((SUCCESS+1))
+            echo "✅ Successfully deployed to $LOC ($SUCCESS/$MAX)"
+          else
+            echo "⚠️ Failed to deploy to $LOC (skipping)"
+            continue
+          fi
         done
 
   # Build collector image
@@ -62,14 +75,14 @@ steps:
         SERVICE_NAME=gcp-mon-collector
         IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/gcp-mon-backend/collector:latest
 
-        echo "🚀 Deploying $$SERVICE_NAME to $$LOC"
+        echo "🚀 Deploying $SERVICE_NAME to $LOC"
 
-        gcloud run deploy $$SERVICE_NAME \
-          --image $$IMAGE \
-          --region $$LOC \
+        gcloud run deploy "$SERVICE_NAME" \
+          --image "$IMAGE" \
+          --region "$LOC" \
           --platform managed \
           --allow-unauthenticated \
-          --service-account cloud-run-gcp-mon-472905@gcp-mon.iam.gserviceaccount.com
+          --service-account cloud-run-gcp-mon@gcp-mon-472905.iam.gserviceaccount.com
 
 options:
   logging: CLOUD_LOGGING_ONLY
