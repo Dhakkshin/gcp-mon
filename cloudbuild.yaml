@@ -23,41 +23,43 @@ steps:
         MAX_REGIONS=3   # reduce for quota safety
 
         for LOC in ${_AGENT_LOCS}; do
-          if [ $SUCCESS_COUNT -ge $MAX_REGIONS ]; then
-            echo "✅ Reached max regions ($MAX_REGIONS). Stopping."
+          if [ $$SUCCESS_COUNT -ge $$MAX_REGIONS ]; then
+            echo "✅ Reached max regions ($$MAX_REGIONS). Stopping."
             break
           fi
 
-          SERVICE_NAME=gcp-mon-agent-$LOC
+          SERVICE_NAME=gcp-mon-agent-$$LOC
           IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/gcp-mon-backend/agent:latest
 
-          echo "🚀 Deploying $SERVICE_NAME to $LOC"
+          echo "🚀 Deploying $$SERVICE_NAME to $$LOC"
 
-          if gcloud run deploy $SERVICE_NAME \
-            --image $IMAGE \
-            --region $LOC \
+          if gcloud run deploy $$SERVICE_NAME \
+            --image $$IMAGE \
+            --region $$LOC \
             --platform managed \
             --allow-unauthenticated \
             --service-account cloud-run-gcp-mon@$PROJECT_ID.iam.gserviceaccount.com \
-            --set-env-vars=REGION=$LOC \
+            --set-env-vars=REGION=$$LOC \
             --verbosity=debug; then
 
-            URL=$(gcloud run services describe $SERVICE_NAME \
+            URL=$(gcloud run services describe $$SERVICE_NAME \
               --platform managed \
-              --region $LOC \
+              --region $$LOC \
               --format 'value(status.url)')
 
-            gcloud run services update $SERVICE_NAME \
-              --region $LOC \
-              --update-env-vars=K_SERVICE_URL=$URL,REGION=$LOC
+            gcloud run services update $$SERVICE_NAME \
+              --region $$LOC \
+              --update-env-vars=K_SERVICE_URL=$$URL,REGION=$$LOC
 
-            SUCCESS_COUNT=$((SUCCESS_COUNT+1))
-            echo "✅ Successfully deployed to $LOC (Total: $SUCCESS_COUNT)"
+            SUCCESS_COUNT=$$((SUCCESS_COUNT+1))
+            echo "✅ Successfully deployed to $$LOC (Total: $$SUCCESS_COUNT)"
           else
-            echo "⚠️ Skipping $LOC due to error (likely quota)."
+            echo "⚠️ Skipping $$LOC due to error (likely quota)."
             continue
           fi
         done
+
+        echo "🎯 Deployment finished. Successful regions: $$SUCCESS_COUNT"
 
   # Build & push collector
   - name: 'gcr.io/cloud-builders/docker'
@@ -76,11 +78,11 @@ steps:
         SERVICE_NAME=gcp-mon-collector
         IMAGE=asia-south1-docker.pkg.dev/$PROJECT_ID/gcp-mon-backend/collector:latest
 
-        echo "🚀 Deploying $SERVICE_NAME to $LOC"
+        echo "🚀 Deploying $$SERVICE_NAME to $$LOC"
 
-        gcloud run deploy $SERVICE_NAME \
-          --image $IMAGE \
-          --region $LOC \
+        gcloud run deploy $$SERVICE_NAME \
+          --image $$IMAGE \
+          --region $$LOC \
           --platform managed \
           --allow-unauthenticated \
           --service-account cloud-run-gcp-mon@$PROJECT_ID.iam.gserviceaccount.com \
